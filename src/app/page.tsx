@@ -1,5 +1,5 @@
 "use client";
-
+import { supabase } from './supabase';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Scale, Target, TrendingDown, Heart, Apple, Dumbbell, Droplets, Moon, Pill, Syringe, AlertCircle, CheckCircle2, Info, UtensilsCrossed, Coffee, Salad, Cookie, Crown, Sparkles, Lock, Activity, Zap } from "lucide-react";
