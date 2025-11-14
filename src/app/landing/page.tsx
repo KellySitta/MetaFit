@@ -2,7 +2,7 @@
 
 import { Star, Zap, TrendingDown, Heart, Award, Users, CheckCircle2, Sparkles, Crown, ArrowRight, Mail } from "lucide-react";
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function LandingPage() {
   const [email, setEmail] = useState("");
@@ -15,7 +15,7 @@ export default function LandingPage() {
     weight: "",
     height: "",
     age: "",
-    goal: ""
+    targetWeight: ""
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formMessage, setFormMessage] = useState("");
@@ -24,6 +24,13 @@ export default function LandingPage() {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+
+    // Verificar se Supabase está configurado
+    if (!isSupabaseConfigured() || !supabase) {
+      setMessage("⚠️ Configure o Supabase para salvar os dados. Clique no banner laranja acima.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -36,7 +43,7 @@ export default function LandingPage() {
       setEmail("");
     } catch (error) {
       setMessage("❌ Erro ao cadastrar. Tente novamente.");
-      console.error(error);
+      console.error("Erro ao salvar no Supabase:", error);
     } finally {
       setLoading(false);
     }
@@ -47,25 +54,63 @@ export default function LandingPage() {
     setFormLoading(true);
     setFormMessage("");
 
+    // Verificar se Supabase está configurado
+    if (!isSupabaseConfigured() || !supabase) {
+      setFormMessage("⚠️ Configure o Supabase para salvar os dados. Clique no banner laranja acima.");
+      setFormLoading(false);
+      return;
+    }
+
+    // Validar campos obrigatórios
+    if (!formData.name || !formData.weight || !formData.height || !formData.age || !formData.targetWeight) {
+      setFormMessage("❌ Por favor, preencha todos os campos.");
+      setFormLoading(false);
+      return;
+    }
+
     try {
+      // Converter valores para números
+      const weight = parseFloat(formData.weight);
+      const height = parseFloat(formData.height);
+      const age = parseInt(formData.age);
+      const targetWeight = parseFloat(formData.targetWeight);
+
+      // Validar se os números são válidos
+      if (isNaN(weight) || isNaN(height) || isNaN(age) || isNaN(targetWeight)) {
+        setFormMessage("❌ Por favor, insira valores numéricos válidos.");
+        setFormLoading(false);
+        return;
+      }
+
+      // Validar se idade é positiva
+      if (age <= 0 || age > 150) {
+        setFormMessage("❌ Por favor, insira uma idade válida.");
+        setFormLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('user_profiles')
         .insert([{
-          name: formData.name,
-          weight: parseFloat(formData.weight),
-          height: parseFloat(formData.height),
-          age: parseInt(formData.age),
-          goal: formData.goal,
+          name: formData.name.trim(),
+          weight: weight,
+          height: height,
+          age: age,
+          target_weight: targetWeight,
           created_at: new Date().toISOString()
         }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao salvar no Supabase:", error);
+        console.error("Detalhes do erro:", error);
+        throw error;
+      }
 
       setFormMessage("✅ Perfil cadastrado com sucesso! Vamos começar sua jornada.");
-      setFormData({ name: "", weight: "", height: "", age: "", goal: "" });
+      setFormData({ name: "", weight: "", height: "", age: "", targetWeight: "" });
     } catch (error) {
-      setFormMessage("❌ Erro ao cadastrar perfil. Tente novamente.");
-      console.error(error);
+      setFormMessage("❌ Erro ao cadastrar perfil. Verifique os dados e tente novamente.");
+      console.error("Erro ao salvar no Supabase:", error);
     } finally {
       setFormLoading(false);
     }
@@ -237,25 +282,24 @@ export default function LandingPage() {
                   placeholder="Ex: 30"
                   required
                   disabled={formLoading}
+                  min="1"
+                  max="150"
                   className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/50 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-white/90 font-bold mb-2 text-left">Qual é o seu objetivo?</label>
-                <select
-                  value={formData.goal}
-                  onChange={(e) => setFormData({...formData, goal: e.target.value})}
+                <label className="block text-white/90 font-bold mb-2 text-left">Qual é o seu peso alvo? (kg)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.targetWeight}
+                  onChange={(e) => setFormData({...formData, targetWeight: e.target.value})}
+                  placeholder="Ex: 65.0"
                   required
                   disabled={formLoading}
-                  className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
-                >
-                  <option value="" className="bg-slate-800">Selecione seu objetivo</option>
-                  <option value="perder_peso" className="bg-slate-800">Perder peso</option>
-                  <option value="ganhar_massa" className="bg-slate-800">Ganhar massa muscular</option>
-                  <option value="manter_peso" className="bg-slate-800">Manter peso atual</option>
-                  <option value="vida_saudavel" className="bg-slate-800">Vida mais saudável</option>
-                </select>
+                  className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/50 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
+                />
               </div>
 
               <button
@@ -268,7 +312,7 @@ export default function LandingPage() {
               </button>
 
               {formMessage && (
-                <p className={`text-sm font-bold text-center ${formMessage.includes('✅') ? 'text-green-300' : 'text-red-300'}`}>
+                <p className={`text-sm font-bold text-center ${formMessage.includes('✅') ? 'text-green-300' : formMessage.includes('⚠️') ? 'text-yellow-300' : 'text-red-300'}`}>
                   {formMessage}
                 </p>
               )}
@@ -300,7 +344,7 @@ export default function LandingPage() {
               </button>
             </form>
             {message && (
-              <p className={`mt-4 text-sm font-bold ${message.includes('✅') ? 'text-green-300' : 'text-red-300'}`}>
+              <p className={`mt-4 text-sm font-bold ${message.includes('✅') ? 'text-green-300' : message.includes('⚠️') ? 'text-yellow-300' : 'text-red-300'}`}>
                 {message}
               </p>
             )}

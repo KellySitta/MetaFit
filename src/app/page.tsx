@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Scale, Target, TrendingDown, Heart, Apple, Dumbbell, Droplets, Moon, Pill, Syringe, AlertCircle, CheckCircle2, Info, UtensilsCrossed, Coffee, Salad, Cookie, Crown, Sparkles, Lock, Activity, Zap } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function Home() {
   const router = useRouter();
@@ -102,55 +102,59 @@ export default function Home() {
 
   // Função para salvar dados no Supabase
   const saveToSupabase = async () => {
+    // Verificar se Supabase está configurado
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase não configurado - pulando salvamento');
+      return true; // Retorna true para permitir continuar sem bloquear
+    }
+
     setIsSaving(true);
     setSaveSuccess(false);
     
     try {
-      console.log('🔄 Iniciando salvamento no Supabase...');
-      console.log('📊 Dados a serem salvos:', {
-        name,
+      // Preparar dados com APENAS as colunas que existem no schema
+      const profileData = {
+        name: name,
         weight: parseFloat(weight),
         height: parseFloat(height),
         age: parseInt(age),
         target_weight: parseFloat(targetWeight),
         uses_glp1: usesGLP1
-      });
+      };
+
+      console.log('Salvando dados no Supabase:', profileData);
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .insert([
-          {
-            name: name,
-            weight: parseFloat(weight),
-            height: parseFloat(height),
-            age: parseInt(age),
-            target_weight: parseFloat(targetWeight),
-            uses_glp1: usesGLP1
-          }
-        ])
+        .insert([profileData])
         .select();
 
       if (error) {
-        console.error('❌ Erro ao salvar no Supabase:', error);
-        alert(`Erro ao salvar seus dados: ${error.message}\n\nVerifique se as variáveis de ambiente do Supabase estão configuradas corretamente.`);
-        return false;
+        console.error('Erro ao salvar no Supabase:', error);
+        console.error('Detalhes do erro:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        // Não bloqueia o fluxo, apenas avisa
+        console.warn('Continuando sem salvar no Supabase');
+        return true;
       }
 
-      console.log('✅ Dados salvos com sucesso no Supabase!');
-      console.log('📝 Registro criado:', data);
-      
+      console.log('Dados salvos com sucesso:', data);
       setSaveSuccess(true);
       
-      // Mostrar mensagem de sucesso por 2 segundos
+      // Mostrar mensagem de sucesso por 3 segundos
       setTimeout(() => {
         setSaveSuccess(false);
       }, 3000);
       
       return true;
     } catch (error) {
-      console.error('❌ Erro ao conectar com Supabase:', error);
-      alert('Erro ao conectar com o banco de dados. Verifique:\n\n1. Se as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY estão configuradas\n2. Se o Supabase está acessível\n3. Se a tabela user_profiles existe');
-      return false;
+      console.error('Erro ao conectar com Supabase:', error);
+      // Não bloqueia o fluxo
+      return true;
     } finally {
       setIsSaving(false);
     }
@@ -415,17 +419,6 @@ export default function Home() {
                 'Começar Minha Transformação'
               )}
             </button>
-            
-            {/* Informação sobre onde verificar os dados - OCULTO */}
-            <div className="mt-4 p-4 bg-blue-500/20 backdrop-blur-sm rounded-xl border border-blue-400/30 hidden">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-300 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-white/80">
-                  <strong className="text-blue-300">Seus dados serão salvos automaticamente!</strong><br />
-                  Para verificar: Acesse o Supabase Dashboard → Table Editor → Tabela "user_profiles"
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -459,12 +452,12 @@ export default function Home() {
             Olá, {name}! 👋
           </h2>
           
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {/* IMC */}
             <div className="p-4 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 backdrop-blur-sm rounded-xl border-2 border-cyan-400/30 shadow-xl hover:shadow-cyan-500/50 transform hover:scale-105 transition-all duration-300">
               <div className="flex items-center gap-2 mb-2">
-                <Scale className="w-4 h-4 text-cyan-300" />
-                <p className="text-xs text-white/80 font-bold">IMC</p>
+                <Scale className="w-5 h-5 text-cyan-300" />
+                <p className="text-sm text-white/80 font-bold">IMC</p>
               </div>
               <p className="text-3xl font-black text-cyan-300">{bmi}</p>
               <p className="text-xs text-white/70 mt-1 font-medium">{bmiCategory}</p>
@@ -473,8 +466,8 @@ export default function Home() {
             {/* Peso Atual */}
             <div className="p-4 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm rounded-xl border-2 border-blue-400/30 shadow-xl hover:shadow-blue-500/50 transform hover:scale-105 transition-all duration-300">
               <div className="flex items-center gap-2 mb-2">
-                <Scale className="w-4 h-4 text-blue-300" />
-                <p className="text-xs text-white/80 font-bold">Peso Atual</p>
+                <Scale className="w-5 h-5 text-blue-300" />
+                <p className="text-sm text-white/80 font-bold">Peso Atual</p>
               </div>
               <p className="text-3xl font-black text-blue-300">{weight} kg</p>
             </div>
@@ -482,8 +475,8 @@ export default function Home() {
             {/* Peso Ideal */}
             <div className="p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-xl border-2 border-purple-400/30 shadow-xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all duration-300">
               <div className="flex items-center gap-2 mb-2">
-                <Target className="w-4 h-4 text-purple-300" />
-                <p className="text-xs text-white/80 font-bold">Peso Ideal</p>
+                <Target className="w-5 h-5 text-purple-300" />
+                <p className="text-sm text-white/80 font-bold">Peso Ideal</p>
               </div>
               <p className="text-3xl font-black text-purple-300">{calculateIdealWeight()} kg</p>
               <p className="text-xs text-white/70 mt-1 font-medium">
@@ -494,8 +487,8 @@ export default function Home() {
             {/* Acima do Peso */}
             <div className="p-4 bg-gradient-to-br from-orange-500/20 to-red-500/20 backdrop-blur-sm rounded-xl border-2 border-orange-400/30 shadow-xl hover:shadow-orange-500/50 transform hover:scale-105 transition-all duration-300">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingDown className="w-4 h-4 text-orange-300" />
-                <p className="text-xs text-white/80 font-bold">Acima do Peso</p>
+                <TrendingDown className="w-5 h-5 text-orange-300" />
+                <p className="text-sm text-white/80 font-bold">Acima do Peso</p>
               </div>
               <p className="text-3xl font-black text-orange-300">{calculateOverweight()} kg</p>
               <p className="text-xs text-white/70 mt-1 font-medium">
