@@ -1,8 +1,76 @@
 "use client";
 
-import { Star, Zap, TrendingDown, Heart, Award, Users, CheckCircle2, Sparkles, Crown, ArrowRight } from "lucide-react";
+import { Star, Zap, TrendingDown, Heart, Award, Users, CheckCircle2, Sparkles, Crown, ArrowRight, Mail } from "lucide-react";
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function LandingPage() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  
+  // Novos estados para o formulário completo
+  const [formData, setFormData] = useState({
+    name: "",
+    weight: "",
+    height: "",
+    age: "",
+    goal: ""
+  });
+  const [formLoading, setFormLoading] = useState(false);
+  const [formMessage, setFormMessage] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .insert([{ email, created_at: new Date().toISOString() }]);
+
+      if (error) throw error;
+
+      setMessage("✅ Email cadastrado com sucesso! Em breve você receberá novidades.");
+      setEmail("");
+    } catch (error) {
+      setMessage("❌ Erro ao cadastrar. Tente novamente.");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLoading(true);
+    setFormMessage("");
+
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .insert([{
+          name: formData.name,
+          weight: parseFloat(formData.weight),
+          height: parseFloat(formData.height),
+          age: parseInt(formData.age),
+          goal: formData.goal,
+          created_at: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+
+      setFormMessage("✅ Perfil cadastrado com sucesso! Vamos começar sua jornada.");
+      setFormData({ name: "", weight: "", height: "", age: "", goal: "" });
+    } catch (error) {
+      setFormMessage("❌ Erro ao cadastrar perfil. Tente novamente.");
+      console.error(error);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const testimonials = [
     {
       name: "Ana Paula Silva",
@@ -115,6 +183,128 @@ export default function LandingPage() {
           <p className="text-xl sm:text-2xl text-white/90 mb-8 max-w-3xl mx-auto font-medium leading-relaxed">
             Mais de <span className="text-cyan-300 font-black">50.000 pessoas</span> já perderam peso de forma saudável com o método MetaFit. Chegou a sua vez!
           </p>
+
+          {/* Formulário Completo com Supabase */}
+          <div className="max-w-2xl mx-auto mb-12 bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20">
+            <h3 className="text-2xl font-black text-white mb-6">Comece Sua Transformação</h3>
+            <form onSubmit={handleFormSubmit} className="space-y-5">
+              <div>
+                <label className="block text-white/90 font-bold mb-2 text-left">Qual é o seu nome?</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Digite seu nome completo"
+                  required
+                  disabled={formLoading}
+                  className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/50 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-white/90 font-bold mb-2 text-left">Qual é o seu peso atual? (kg)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.weight}
+                  onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                  placeholder="Ex: 75.5"
+                  required
+                  disabled={formLoading}
+                  className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/50 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-white/90 font-bold mb-2 text-left">Qual é a sua altura? (cm)</label>
+                <input
+                  type="number"
+                  value={formData.height}
+                  onChange={(e) => setFormData({...formData, height: e.target.value})}
+                  placeholder="Ex: 170"
+                  required
+                  disabled={formLoading}
+                  className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/50 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-white/90 font-bold mb-2 text-left">Qual é a sua idade?</label>
+                <input
+                  type="number"
+                  value={formData.age}
+                  onChange={(e) => setFormData({...formData, age: e.target.value})}
+                  placeholder="Ex: 30"
+                  required
+                  disabled={formLoading}
+                  className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/50 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-white/90 font-bold mb-2 text-left">Qual é o seu objetivo?</label>
+                <select
+                  value={formData.goal}
+                  onChange={(e) => setFormData({...formData, goal: e.target.value})}
+                  required
+                  disabled={formLoading}
+                  className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
+                >
+                  <option value="" className="bg-slate-800">Selecione seu objetivo</option>
+                  <option value="perder_peso" className="bg-slate-800">Perder peso</option>
+                  <option value="ganhar_massa" className="bg-slate-800">Ganhar massa muscular</option>
+                  <option value="manter_peso" className="bg-slate-800">Manter peso atual</option>
+                  <option value="vida_saudavel" className="bg-slate-800">Vida mais saudável</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={formLoading}
+                className="w-full inline-flex items-center justify-center gap-3 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 hover:from-cyan-500 hover:via-blue-600 hover:to-purple-700 text-white font-black text-lg px-10 py-5 rounded-2xl shadow-2xl hover:shadow-cyan-500/50 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {formLoading ? "Enviando..." : "Começar Agora"}
+                {!formLoading && <ArrowRight className="w-6 h-6" />}
+              </button>
+
+              {formMessage && (
+                <p className={`text-sm font-bold text-center ${formMessage.includes('✅') ? 'text-green-300' : 'text-red-300'}`}>
+                  {formMessage}
+                </p>
+              )}
+            </form>
+          </div>
+
+          {/* Email Capture Form */}
+          <div className="max-w-2xl mx-auto mb-8">
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+              <div className="relative w-full sm:flex-1">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Digite seu melhor email"
+                  required
+                  disabled={loading}
+                  className="w-full px-5 py-4 pl-12 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/50 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 hover:from-cyan-500 hover:via-blue-600 hover:to-purple-700 text-white font-black text-lg px-10 py-4 rounded-2xl shadow-2xl hover:shadow-cyan-500/50 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {loading ? "Enviando..." : "Quero Emagrecer"}
+                {!loading && <ArrowRight className="w-6 h-6" />}
+              </button>
+            </form>
+            {message && (
+              <p className={`mt-4 text-sm font-bold ${message.includes('✅') ? 'text-green-300' : 'text-red-300'}`}>
+                {message}
+              </p>
+            )}
+          </div>
 
           {/* CTA Button */}
           <a

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Scale, Target, TrendingDown, Heart, Apple, Dumbbell, Droplets, Moon, Pill, Syringe, AlertCircle, CheckCircle2, Info, UtensilsCrossed, Coffee, Salad, Cookie, Crown, Sparkles, Lock, Activity, Zap } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export default function Home() {
   const router = useRouter();
@@ -17,6 +18,8 @@ export default function Home() {
   const [bmiCategory, setBmiCategory] = useState("");
   const [showTeas, setShowTeas] = useState(false);
   const [showLockedModal, setShowLockedModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   
   // Estados para GLP-1
   const [selectedMedication, setSelectedMedication] = useState("");
@@ -95,6 +98,62 @@ export default function Home() {
       return dailyCalories;
     }
     return 0;
+  };
+
+  // Função para salvar dados no Supabase
+  const saveToSupabase = async () => {
+    setIsSaving(true);
+    setSaveSuccess(false);
+    
+    try {
+      console.log('🔄 Iniciando salvamento no Supabase...');
+      console.log('📊 Dados a serem salvos:', {
+        name,
+        weight: parseFloat(weight),
+        height: parseFloat(height),
+        age: parseInt(age),
+        target_weight: parseFloat(targetWeight),
+        uses_glp1: usesGLP1
+      });
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .insert([
+          {
+            name: name,
+            weight: parseFloat(weight),
+            height: parseFloat(height),
+            age: parseInt(age),
+            target_weight: parseFloat(targetWeight),
+            uses_glp1: usesGLP1
+          }
+        ])
+        .select();
+
+      if (error) {
+        console.error('❌ Erro ao salvar no Supabase:', error);
+        alert(`Erro ao salvar seus dados: ${error.message}\n\nVerifique se as variáveis de ambiente do Supabase estão configuradas corretamente.`);
+        return false;
+      }
+
+      console.log('✅ Dados salvos com sucesso no Supabase!');
+      console.log('📝 Registro criado:', data);
+      
+      setSaveSuccess(true);
+      
+      // Mostrar mensagem de sucesso por 2 segundos
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao conectar com Supabase:', error);
+      alert('Erro ao conectar com o banco de dados. Verifique:\n\n1. Se as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY estão configuradas\n2. Se o Supabase está acessível\n3. Se a tabela user_profiles existe');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Configurações de medicamentos GLP-1
@@ -225,6 +284,17 @@ export default function Home() {
         {/* Efeitos de fundo modernos */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE2YzAtMi4yMSAxLjc5LTQgNC00czQgMS43OSA0IDQtMS43OSA0LTQgNC00LTEuNzktNC00em0wIDI0YzAtMi4yMSAxLjc5LTQgNC00czQgMS43OSA0IDQtMS43OSA0LTQgNC00LTEuNzktNC00eiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
         
+        {/* Mensagem de Sucesso Flutuante */}
+        {saveSuccess && (
+          <div className="fixed top-4 right-4 z-50 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
+            <CheckCircle2 className="w-6 h-6" />
+            <div>
+              <p className="font-bold">Dados salvos com sucesso!</p>
+              <p className="text-sm text-white/90">Verifique a tabela user_profiles no Supabase</p>
+            </div>
+          </div>
+        )}
+        
         <div className="max-w-2xl w-full relative z-10">
           <div className="bg-white/10 backdrop-blur-2xl rounded-3xl shadow-2xl p-8 sm:p-12 border border-white/20">
             {/* Header do Quiz */}
@@ -311,49 +381,51 @@ export default function Home() {
                   className="w-full px-5 py-4 rounded-2xl border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder-white/50 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/30 transition-all outline-none font-medium"
                 />
               </div>
-
-              {/* GLP-1 */}
-              <div className="p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-2xl border-2 border-purple-300/30">
-                <div className="flex items-start gap-4">
-                  <div className="bg-gradient-to-br from-purple-400 to-pink-600 p-3 rounded-xl flex-shrink-0 shadow-lg">
-                    <Pill className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="flex items-center cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={usesGLP1}
-                        onChange={(e) => setUsesGLP1(e.target.checked)}
-                        className="w-5 h-5 rounded border-2 border-purple-300 text-purple-600 focus:ring-4 focus:ring-purple-500/30 cursor-pointer transition-all"
-                      />
-                      <span className="ml-3 text-base font-bold text-white group-hover:text-cyan-300 transition-colors">
-                        Uso medicação GLP-1
-                      </span>
-                    </label>
-                    <p className="mt-2 text-sm text-white/70 ml-8">
-                      Ozempic, Wegovy, Saxenda ou similares
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Botão Continuar */}
             <button
-              onClick={() => {
+              onClick={async () => {
                 calculateBMI();
-                // Salvar peso e nome no localStorage para usar em outras páginas
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('userWeight', weight);
-                  localStorage.setItem('userName', name);
+                
+                // Salvar no Supabase
+                const saved = await saveToSupabase();
+                
+                if (saved) {
+                  // Salvar peso e nome no localStorage para usar em outras páginas
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('userWeight', weight);
+                    localStorage.setItem('userName', name);
+                  }
+                  setCurrentStep('app');
                 }
-                setCurrentStep('app');
               }}
-              disabled={!name || !weight || !height || !age || !targetWeight}
+              disabled={!name || !weight || !height || !age || !targetWeight || isSaving}
               className="w-full mt-8 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 hover:from-cyan-500 hover:via-blue-600 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-black text-lg py-5 rounded-2xl shadow-2xl hover:shadow-cyan-500/50 transform hover:scale-[1.02] transition-all duration-300"
             >
-              Começar Minha Transformação
+              {isSaving ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Salvando no Supabase...
+                </span>
+              ) : (
+                'Começar Minha Transformação'
+              )}
             </button>
+            
+            {/* Informação sobre onde verificar os dados - OCULTO */}
+            <div className="mt-4 p-4 bg-blue-500/20 backdrop-blur-sm rounded-xl border border-blue-400/30 hidden">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-300 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-white/80">
+                  <strong className="text-blue-300">Seus dados serão salvos automaticamente!</strong><br />
+                  Para verificar: Acesse o Supabase Dashboard → Table Editor → Tabela "user_profiles"
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -387,46 +459,46 @@ export default function Home() {
             Olá, {name}! 👋
           </h2>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid sm:grid-cols-2 gap-3">
             {/* IMC */}
-            <div className="p-6 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 backdrop-blur-sm rounded-2xl border-2 border-cyan-400/30 shadow-xl hover:shadow-cyan-500/50 transform hover:scale-105 transition-all duration-300">
-              <div className="flex items-center gap-3 mb-2">
-                <Scale className="w-5 h-5 text-cyan-300" />
-                <p className="text-sm text-white/80 font-bold">IMC</p>
+            <div className="p-4 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 backdrop-blur-sm rounded-xl border-2 border-cyan-400/30 shadow-xl hover:shadow-cyan-500/50 transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center gap-2 mb-2">
+                <Scale className="w-4 h-4 text-cyan-300" />
+                <p className="text-xs text-white/80 font-bold">IMC</p>
               </div>
-              <p className="text-4xl font-black text-cyan-300">{bmi}</p>
-              <p className="text-sm text-white/70 mt-1 font-medium">{bmiCategory}</p>
+              <p className="text-3xl font-black text-cyan-300">{bmi}</p>
+              <p className="text-xs text-white/70 mt-1 font-medium">{bmiCategory}</p>
             </div>
 
             {/* Peso Atual */}
-            <div className="p-6 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm rounded-2xl border-2 border-blue-400/30 shadow-xl hover:shadow-blue-500/50 transform hover:scale-105 transition-all duration-300">
-              <div className="flex items-center gap-3 mb-2">
-                <Scale className="w-5 h-5 text-blue-300" />
-                <p className="text-sm text-white/80 font-bold">Peso Atual</p>
+            <div className="p-4 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm rounded-xl border-2 border-blue-400/30 shadow-xl hover:shadow-blue-500/50 transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center gap-2 mb-2">
+                <Scale className="w-4 h-4 text-blue-300" />
+                <p className="text-xs text-white/80 font-bold">Peso Atual</p>
               </div>
-              <p className="text-4xl font-black text-blue-300">{weight} kg</p>
+              <p className="text-3xl font-black text-blue-300">{weight} kg</p>
             </div>
 
             {/* Peso Ideal */}
-            <div className="p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-2xl border-2 border-purple-400/30 shadow-xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all duration-300">
-              <div className="flex items-center gap-3 mb-2">
-                <Target className="w-5 h-5 text-purple-300" />
-                <p className="text-sm text-white/80 font-bold">Peso Ideal</p>
+            <div className="p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-xl border-2 border-purple-400/30 shadow-xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="w-4 h-4 text-purple-300" />
+                <p className="text-xs text-white/80 font-bold">Peso Ideal</p>
               </div>
-              <p className="text-4xl font-black text-purple-300">{calculateIdealWeight()} kg</p>
-              <p className="text-sm text-white/70 mt-1 font-medium">
+              <p className="text-3xl font-black text-purple-300">{calculateIdealWeight()} kg</p>
+              <p className="text-xs text-white/70 mt-1 font-medium">
                 Para sua altura e idade
               </p>
             </div>
 
             {/* Acima do Peso */}
-            <div className="p-6 bg-gradient-to-br from-orange-500/20 to-red-500/20 backdrop-blur-sm rounded-2xl border-2 border-orange-400/30 shadow-xl hover:shadow-orange-500/50 transform hover:scale-105 transition-all duration-300">
-              <div className="flex items-center gap-3 mb-2">
-                <TrendingDown className="w-5 h-5 text-orange-300" />
-                <p className="text-sm text-white/80 font-bold">Acima do Peso</p>
+            <div className="p-4 bg-gradient-to-br from-orange-500/20 to-red-500/20 backdrop-blur-sm rounded-xl border-2 border-orange-400/30 shadow-xl hover:shadow-orange-500/50 transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingDown className="w-4 h-4 text-orange-300" />
+                <p className="text-xs text-white/80 font-bold">Acima do Peso</p>
               </div>
-              <p className="text-4xl font-black text-orange-300">{calculateOverweight()} kg</p>
-              <p className="text-sm text-white/70 mt-1 font-medium">
+              <p className="text-3xl font-black text-orange-300">{calculateOverweight()} kg</p>
+              <p className="text-xs text-white/70 mt-1 font-medium">
                 Meta: {targetWeight} kg
               </p>
             </div>
